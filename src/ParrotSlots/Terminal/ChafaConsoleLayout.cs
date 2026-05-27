@@ -19,81 +19,35 @@ public sealed class ChafaConsoleLayout
     public int StatusRows { get; init; }
     public int HelpTop { get; init; } = -1;
     public int HelpRows { get; init; }
-    public bool UseToilet { get; init; }
 
-    public static ChafaConsoleLayout Measure(int width, int height, bool useToilet = false) =>
-        useToilet ? MeasureWithToilet(width, height) : MeasurePlain(width, height);
+    public static ChafaConsoleLayout Measure(int width, int height) => MeasureCompact(width, height);
 
-    private static ChafaConsoleLayout MeasurePlain(int width, int height)
+    private static ChafaConsoleLayout MeasureCompact(int width, int height)
     {
         width = Math.Max(MinWidth, width);
         height = Math.Max(MinHeight, height);
 
-        var headerRows = width >= 110 ? 2 : width >= 70 ? 3 : 4;
-        var statusRows = 1;
-        var helpRows = height >= 30 ? 1 : 0;
-        var minBoardRows = Math.Clamp(height / 3, 10, 24);
-        var minLogRows = height >= 26 ? 3 : 2;
+        var headerRows = width >= 100 ? 2 : 1;
+        var bottomRows = height >= 34 ? 5 : height >= 28 ? 4 : 3;
+        bottomRows = Math.Min(bottomRows, height - headerRows - 8);
 
-        var reservedBottom = statusRows + helpRows + minLogRows;
-        var boardHeight = height - headerRows - reservedBottom;
-        if (boardHeight < minBoardRows)
-        {
-            boardHeight = Math.Max(8, height - headerRows - statusRows - helpRows - minLogRows);
-        }
-
-        var logRows = height - headerRows - boardHeight - statusRows - helpRows;
-        logRows = Math.Clamp(logRows, minLogRows, 8);
-
-        boardHeight = Math.Max(8, height - headerRows - logRows - statusRows - helpRows);
+        var bottomTop = height - bottomRows;
         var boardTop = headerRows;
-        var logTop = boardTop + boardHeight;
-        var statusTop = logTop + logRows;
-        var helpTop = helpRows > 0 ? statusTop + statusRows : -1;
+        var boardHeight = Math.Max(8, bottomTop - boardTop);
 
-        return new ChafaConsoleLayout
+        if (boardTop + boardHeight + bottomRows > height)
         {
-            Width = width,
-            Height = height,
-            HeaderRows = headerRows,
-            BoardTop = boardTop,
-            BoardWidth = width,
-            BoardHeight = boardHeight,
-            LogTop = logTop,
-            LogRows = logRows,
-            StatsTop = -1,
-            StatsRows = 0,
-            StatusTop = statusTop,
-            StatusRows = statusRows,
-            HelpTop = helpTop,
-            HelpRows = helpRows,
-            UseToilet = false
-        };
-    }
-
-    private static ChafaConsoleLayout MeasureWithToilet(int width, int height)
-    {
-        width = Math.Max(MinWidth, width);
-        height = Math.Max(MinHeight, height);
-
-        var headerRows = 1;
-        var statsRows = width >= 110 ? 6 : width >= 80 ? 5 : 4;
-        var statusRows = width >= 100 ? 5 : width >= 70 ? 4 : 3;
-        var helpRows = height >= 36 ? 3 : height >= 30 ? 2 : 0;
-        var logRows = width >= 100 ? 4 : 3;
-
-        var bottomRows = statsRows + statusRows + logRows + helpRows;
-        var boardHeight = Math.Max(8, height - headerRows - bottomRows);
-        if (boardHeight < 10 && height >= 24)
-        {
-            var overflow = 10 - boardHeight;
-            logRows = Math.Max(2, logRows - overflow);
-            bottomRows = statsRows + statusRows + logRows + helpRows;
             boardHeight = Math.Max(8, height - headerRows - bottomRows);
+            bottomTop = boardTop + boardHeight;
+            bottomRows = height - bottomTop;
         }
 
-        var boardTop = headerRows;
-        var logTop = boardTop + boardHeight;
+        var statusRows = 1;
+        var statsRows = 1;
+        var helpRows = bottomRows >= 5 && width < 90 ? 1 : 0;
+        var logRows = Math.Max(1, bottomRows - statusRows - statsRows - helpRows);
+
+        var logTop = bottomTop;
         var statsTop = logTop + logRows;
         var statusTop = statsTop + statsRows;
         var helpTop = helpRows > 0 ? statusTop + statusRows : -1;
@@ -113,8 +67,7 @@ public sealed class ChafaConsoleLayout
             StatusTop = statusTop,
             StatusRows = statusRows,
             HelpTop = helpTop,
-            HelpRows = helpRows,
-            UseToilet = true
+            HelpRows = helpRows
         };
     }
 
@@ -127,8 +80,7 @@ public sealed class ChafaConsoleLayout
         LogRows == other.LogRows &&
         StatsRows == other.StatsRows &&
         StatusRows == other.StatusRows &&
-        HelpRows == other.HelpRows &&
-        UseToilet == other.UseToilet;
+        HelpRows == other.HelpRows;
 }
 
 internal static class ConsoleTextLayout

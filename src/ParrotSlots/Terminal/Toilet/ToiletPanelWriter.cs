@@ -16,7 +16,7 @@ internal static class ToiletPanelWriter
         IReadOnlyList<string> lines;
         try
         {
-            lines = layout.UseToilet
+            lines = ToiletCli.IsAvailable()
                 ? ToiletCli.RenderLines(text, layout.Width, kind, rowCount)
                 : [ConsoleTextLayout.Fit(text, layout.Width)];
         }

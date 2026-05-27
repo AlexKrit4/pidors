@@ -5,8 +5,6 @@ using ParrotSlots.Core;
 using ParrotSlots.Graphics;
 using ParrotSlots.Settings;
 using ParrotSlots.Terminal.Chafa;
-using ParrotSlots.Terminal.Toilet;
-
 namespace ParrotSlots.Terminal;
 
 /// <summary>
@@ -21,14 +19,13 @@ public sealed class ChafaConsoleApplication
     private readonly BoardImageCompositor _compositor;
     private readonly SpinPlaybackController _playback = new();
     private readonly Stopwatch _frameClock = new();
-    private readonly bool _useToilet = ToiletCli.IsAvailable();
     private ChafaConsoleLayout _layout;
 
     public ChafaConsoleApplication()
     {
         _compositor = new BoardImageCompositor(_catalog);
         var (width, height) = TerminalSizeReader.Read();
-        _layout = ChafaConsoleLayout.Measure(width, height, _useToilet);
+        _layout = ChafaConsoleLayout.Measure(width, height);
     }
 
     public void Run()
@@ -194,7 +191,7 @@ public sealed class ChafaConsoleApplication
     private void RefreshLayoutIfNeeded()
     {
         var (width, height) = TerminalSizeReader.Read();
-        var next = ChafaConsoleLayout.Measure(width, height, _useToilet);
+        var next = ChafaConsoleLayout.Measure(width, height);
         if (_layout.Matches(next))
         {
             return;
@@ -222,6 +219,7 @@ public sealed class ChafaConsoleApplication
         Console.Write("\x1b[?25l\x1b[2J\x1b[H\x1b[0m");
         WriteHeader(state);
         WriteBoard(frame);
+        ClearPanelGap();
         WriteBottomPanel(state);
         Console.Out.Flush();
     }
@@ -243,83 +241,41 @@ public sealed class ChafaConsoleApplication
         }
         catch (Exception ex)
         {
-            ToiletPanelWriter.WriteBlock(
-                _layout,
+            WritePanelLine(
                 _layout.BoardTop,
-                Math.Min(3, _layout.BoardHeight),
-                $"Chafa error: {ex.Message}",
-                ToiletBlockKind.Status);
+                $"Chafa error: {ConsoleTextLayout.Fit(ex.Message, _layout.Width)}",
+                dim: false,
+                highlight: true);
+        }
+    }
+
+    private void ClearPanelGap()
+    {
+        var gapStart = _layout.BoardTop + _layout.BoardHeight;
+        var gapEnd = _layout.LogTop;
+        for (var row = gapStart; row < gapEnd && row < _layout.Height; row++)
+        {
+            Console.SetCursorPosition(0, row);
+            Console.Write("\x1b[2K");
         }
     }
 
     private void WriteHeader(TerminalUiState state)
     {
-        if (_layout.UseToilet)
+        var controls = "S Spin  -/+ Bet  B Balance  R Rules  Q Quit";
+        var stats = $"Balance {state.Balance}  Bet {state.Bet}  Win {state.LastWin}";
+
+        if (_layout.HeaderRows >= 2)
         {
-            var controls = "S Spin  -/+ Bet  B Balance  R Rules  Q Quit";
-            WritePlainLine(0, ConsoleTextLayout.Fit(controls, _layout.Width), bright: true);
+            WritePlainLine(0, "=== Pirate Parrots ===", bright: true);
+            WritePlainLine(1, ConsoleTextLayout.Fit($"{stats}  |  {controls}", _layout.Width), bright: false);
             return;
         }
 
-        var title = "=== Pirate Parrots ===";
-        var stats = $"Balance: {state.Balance}  Bet: {state.Bet}  Win: {state.LastWin}";
-        var controlsPlain = "S Spin  -/+ Bet  B Balance  R Rules  Q Quit";
-
-        if (_layout.Width >= 110)
-        {
-            WritePlainLine(0, title, bright: true);
-            WritePlainLine(1, $"{stats}   |   {controlsPlain}", bright: false);
-            return;
-        }
-
-        var headerLines = new List<string> { title, stats };
-        if (_layout.Width >= 70)
-        {
-            headerLines.Add(controlsPlain);
-        }
-        else
-        {
-            headerLines.AddRange(ConsoleTextLayout.Wrap(controlsPlain, _layout.Width, 2));
-        }
-
-        for (var i = 0; i < _layout.HeaderRows; i++)
-        {
-            var text = i < headerLines.Count ? headerLines[i] : string.Empty;
-            WritePlainLine(i, text, bright: i == 0);
-        }
+        WritePlainLine(0, ConsoleTextLayout.Fit($"{stats}  |  {controls}", _layout.Width), bright: true);
     }
 
     private void WriteBottomPanel(TerminalUiState state)
-    {
-        if (_layout.UseToilet)
-        {
-            WriteToiletBottomPanel(state);
-            return;
-        }
-
-        WritePlainBottomPanel(state);
-    }
-
-    private void WriteToiletBottomPanel(TerminalUiState state)
-    {
-        var lastLog = state.Messages.LastOrDefault() ?? "Spin log";
-        ToiletPanelWriter.WriteBlock(_layout, _layout.LogTop, _layout.LogRows, lastLog, ToiletBlockKind.Log);
-
-        var stats = $"Balance {state.Balance}   Bet {state.Bet}   Win {state.LastWin}";
-        ToiletPanelWriter.WriteBlock(_layout, _layout.StatsTop, _layout.StatsRows, stats, ToiletBlockKind.Stats);
-
-        ToiletPanelWriter.WriteBlock(_layout, _layout.StatusTop, _layout.StatusRows, state.Status, ToiletBlockKind.Status);
-
-        if (_layout.HelpTop >= 0 && _layout.HelpRows > 0)
-        {
-            var help = _layout.Width >= 90
-                ? "S Spin  -/+ Bet  B Balance  R Rules  Q Quit"
-                : "Use Windows Terminal + resize window";
-            ToiletPanelWriter.WriteBlock(_layout, _layout.HelpTop, _layout.HelpRows, help, ToiletBlockKind.Help);
-        }
-    }
-
-    private void WritePlainBottomPanel(TerminalUiState state)
     {
         var logLines = state.Messages
             .TakeLast(_layout.LogRows)
@@ -335,13 +291,14 @@ public sealed class ChafaConsoleApplication
             WritePanelLine(_layout.LogTop + i, logLines[i], dim: string.IsNullOrWhiteSpace(logLines[i]));
         }
 
-        WritePanelLine(_layout.StatusTop, state.Status, dim: false, highlight: true);
+        var stats = $"Balance {state.Balance}   Bet {state.Bet}   Win {state.LastWin}";
+        WritePanelLine(_layout.StatsTop, stats, dim: false, highlight: true);
+
+        WritePanelLine(_layout.StatusTop, state.Status, dim: false);
 
         if (_layout.HelpTop >= 0)
         {
-            var help = _layout.Width >= 90
-                ? "Tip: resize terminal freely — board and log area adapt to your screen."
-                : "Tip: use Windows Terminal for best colors.";
+            var help = ConsoleTextLayout.Wrap("S Spin  -/+ Bet  B Balance  R Rules  Q Quit", _layout.Width, 1)[0];
             WritePanelLine(_layout.HelpTop, help, dim: true);
         }
     }
@@ -357,10 +314,12 @@ public sealed class ChafaConsoleApplication
 
     private void WritePanelLine(int row, string text, bool dim, bool highlight = false)
     {
-        if (row >= _layout.Height)
+        if (row < 0 || row >= _layout.Height)
         {
             return;
         }
+
+        var line = ConsoleTextLayout.Fit(text ?? string.Empty, _layout.Width);
 
         Console.SetCursorPosition(0, row);
         Console.Write("\x1b[2K");
@@ -378,7 +337,7 @@ public sealed class ChafaConsoleApplication
             Console.Write("\x1b[37m");
         }
 
-        Console.Write(ConsoleTextLayout.Fit(text, _layout.Width).PadRight(_layout.Width));
+        Console.Write(line.PadRight(_layout.Width));
         Console.Write("\x1b[0m");
     }
 }
