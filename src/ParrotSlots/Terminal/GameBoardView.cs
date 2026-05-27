@@ -52,6 +52,8 @@ public sealed class GameBoardView : View, IBoardView
             return;
         }
 
+        DrawGrid(bounds);
+
         var board = _frame.Board;
 
         for (var row = 0; row < board.Rows; row++)
@@ -106,6 +108,52 @@ public sealed class GameBoardView : View, IBoardView
         var scaledHeight = nativeHeight * _displayScale;
         _originX = Math.Max(0, (bounds.Width - scaledWidth) / 2);
         _originY = Math.Max(0, (bounds.Height - scaledHeight) / 2);
+    }
+
+    private void DrawGrid(Rect bounds)
+    {
+        if (_frame.Board is null)
+        {
+            return;
+        }
+
+        var board = _frame.Board;
+        var slotWidth = SlotWidth * _displayScale;
+        var slotHeight = SlotHeight * _displayScale;
+        var rowStride = RowStride * _displayScale;
+        var gridColor = Application.Driver.MakeAttribute(Color.DarkGray, Color.Blue);
+
+        for (var col = 0; col <= board.Cols; col++)
+        {
+            var x = _originX + col * slotWidth;
+            if (x < 0 || x >= bounds.Width)
+            {
+                continue;
+            }
+
+            for (var y = _originY; y < _originY + board.Rows * rowStride && y < bounds.Height; y++)
+            {
+                Move(x, y);
+                Driver.SetAttribute(gridColor);
+                Driver.AddRune(new Rune('│'));
+            }
+        }
+
+        for (var row = 0; row <= board.Rows; row++)
+        {
+            var y = _originY + row * rowStride;
+            if (y < 0 || y >= bounds.Height)
+            {
+                continue;
+            }
+
+            for (var x = _originX; x < _originX + board.Cols * slotWidth && x < bounds.Width; x++)
+            {
+                Move(x, y);
+                Driver.SetAttribute(gridColor);
+                Driver.AddRune(new Rune('─'));
+            }
+        }
     }
 
     private bool ShouldSkipCell(int row, int col)

@@ -28,6 +28,7 @@ public sealed class BoardRenderer
         ParrotColor? movingParrotColor = null)
     {
         var (originX, originY) = GetGridOrigin(GameConstants.WindowWidth, GameConstants.WindowHeight);
+        DrawGrid(originX, originY);
 
         for (var row = 0; row < board.Rows; row++)
         {
@@ -74,6 +75,26 @@ public sealed class BoardRenderer
             var x = fromX + (toX - fromX) * t;
             var y = fromY + (toY - fromY) * t;
             DrawCellAt(parrotCell, x, y);
+        }
+    }
+
+    private static void DrawGrid(int originX, int originY)
+    {
+        var color = new Color(255, 255, 255, 72);
+        var border = new Color(255, 255, 255, 120);
+        var gridWidth = GameConstants.GridCols * GameConstants.CellSize;
+        var gridHeight = GameConstants.GridRows * GameConstants.CellSize;
+
+        for (var col = 0; col <= GameConstants.GridCols; col++)
+        {
+            var x = originX + col * GameConstants.CellSize;
+            Raylib.DrawLine(x, originY, x, originY + gridHeight, col is 0 or GameConstants.GridCols ? border : color);
+        }
+
+        for (var row = 0; row <= GameConstants.GridRows; row++)
+        {
+            var y = originY + row * GameConstants.CellSize;
+            Raylib.DrawLine(originX, y, originX + gridWidth, y, row is 0 or GameConstants.GridRows ? border : color);
         }
     }
 

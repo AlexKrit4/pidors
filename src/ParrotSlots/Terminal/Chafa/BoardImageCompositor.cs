@@ -30,6 +30,7 @@ public sealed class BoardImageCompositor
 
         using var canvas = new Image<Rgba32>(width, height);
         DrawBackground(canvas);
+        DrawGrid(canvas);
 
         var board = frame.Board;
         for (var row = 0; row < board.Rows; row++)
@@ -81,6 +82,42 @@ public sealed class BoardImageCompositor
         }
 
         canvas.Mutate(ctx => ctx.DrawImage(background, new Point(0, 0), 1f));
+    }
+
+    private static void DrawGrid(Image<Rgba32> canvas)
+    {
+        var line = new Rgba32(255, 255, 255, 72);
+
+        for (var col = 1; col < GameConstants.GridCols; col++)
+        {
+            var x = col * CellPixelSize;
+            for (var y = 0; y < canvas.Height; y++)
+            {
+                canvas[x, y] = line;
+            }
+        }
+
+        for (var row = 1; row < GameConstants.GridRows; row++)
+        {
+            var y = row * CellPixelSize;
+            for (var x = 0; x < canvas.Width; x++)
+            {
+                canvas[x, y] = line;
+            }
+        }
+
+        var border = new Rgba32(255, 255, 255, 120);
+        for (var x = 0; x < canvas.Width; x++)
+        {
+            canvas[x, 0] = border;
+            canvas[x, canvas.Height - 1] = border;
+        }
+
+        for (var y = 0; y < canvas.Height; y++)
+        {
+            canvas[0, y] = border;
+            canvas[canvas.Width - 1, y] = border;
+        }
     }
 
     private Image<Rgba32>? LoadBackground(int width, int height)

@@ -9,6 +9,7 @@ public sealed record FallOutPhase(GameBoard Board) : SpinPhase;
 public sealed record DropInPhase(GameBoard Board) : SpinPhase;
 
 public sealed record ParrotStepPhase(
+    GameBoard BoardBefore,
     GameBoard Board,
     ParrotColor Color,
     (int Row, int Col) From,
@@ -79,6 +80,7 @@ public static class SpinPlanner
 
                     var next = path[1];
                     var from = current;
+                    var boardBefore = working.Clone();
                     var crystal = working.Get(next.Row, next.Col);
                     working.Set(from.Row, from.Col, Cell.Empty);
                     owners[from.Row, from.Col] = color;
@@ -94,7 +96,7 @@ public static class SpinPlanner
                         messages.Add(message);
                     }
 
-                    phases.Add(new ParrotStepPhase(working.Clone(), color, from, next, win, message));
+                    phases.Add(new ParrotStepPhase(boardBefore, working.Clone(), color, from, next, win, message));
                     current = next;
                     roundMoves++;
                 }

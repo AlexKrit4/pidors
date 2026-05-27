@@ -19,6 +19,8 @@ public sealed class SpinPlaybackController
     private int _phaseIndex;
     private PlaybackStage _stage;
     private CascadePhase? _cascade;
+    private ParrotStepPhase? _parrotStep;
+    private bool _parrotStepShowingAfter;
 
     public bool IsPlaying { get; private set; }
     public GameBoard DisplayBoard { get; private set; } = CreateEmptyBoard();
@@ -36,12 +38,16 @@ public sealed class SpinPlaybackController
         _session = session;
         _plan = session.Plan;
         _phaseIndex = 0;
+        _parrotStep = null;
+        _parrotStepShowingAfter = false;
         IsPlaying = true;
         BeginCurrentPhase();
     }
 
     public void Update(float deltaSeconds)
     {
+        _ = deltaSeconds;
+
         if (!IsPlaying || _plan is null)
         {
             return;
@@ -52,8 +58,21 @@ public sealed class SpinPlaybackController
         switch (_stage)
         {
             case PlaybackStage.DropIn:
-            case PlaybackStage.ParrotStep:
                 AdvancePhase();
+                break;
+            case PlaybackStage.ParrotStep:
+                if (!_parrotStepShowingAfter)
+                {
+                    DisplayBoard = _parrotStep!.Board.Clone();
+                    _parrotStepShowingAfter = true;
+                }
+                else
+                {
+                    _parrotStep = null;
+                    _parrotStepShowingAfter = false;
+                    AdvancePhase();
+                }
+
                 break;
             case PlaybackStage.CascadeGravity:
                 DisplayBoard = _cascade!.Plan.AfterGravity.Clone();
@@ -101,7 +120,9 @@ public sealed class SpinPlaybackController
                 _stage = PlaybackStage.DropIn;
                 break;
             case ParrotStepPhase parrot:
-                DisplayBoard = parrot.Board.Clone();
+                _parrotStep = parrot;
+                _parrotStepShowingAfter = false;
+                DisplayBoard = parrot.BoardBefore.Clone();
                 _stage = PlaybackStage.ParrotStep;
                 break;
             case CascadePhase cascade:
@@ -133,6 +154,8 @@ public sealed class SpinPlaybackController
         _session = null;
         _plan = null;
         _cascade = null;
+        _parrotStep = null;
+        _parrotStepShowingAfter = false;
     }
 
     private static GameBoard CreateEmptyBoard()
