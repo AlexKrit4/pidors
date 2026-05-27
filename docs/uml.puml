@@ -43,6 +43,13 @@ package Wallet <<Proxy>> {
 package Interpreter {
   class CommandInterpreter
   interface ICommandExpression
+  class SpinExpression
+  class AutoSpinExpression
+  class BetExpression
+  class BalanceExpression
+  class RulesExpression
+  class QuitExpression
+  class SequenceExpression
 }
 
 package Observer {
@@ -50,6 +57,9 @@ package Observer {
   interface IGameObserver
   class GameEventHub
   class ConsoleRenderer
+  class StatisticsTracker
+  class GameLogger
+  class TerminalUiObserver
 }
 
 class SlotMachine
@@ -61,9 +71,17 @@ ISlotThemeFactory ..> ISymbolSet
 ISlotThemeFactory ..> IPayTable
 ISlotThemeFactory ..> IBoardGenerator
 
+DefaultGameDirector --> GameEventHub
 DefaultGameDirector --> SlotMachineBuilder
 SlotMachineBuilder --> SlotMachine
+SlotMachineBuilder --> ISlotThemeFactory
+SlotMachineBuilder --> IWallet
+SlotMachineBuilder --> IPayoutRule
+SlotMachineBuilder --> IGameObservable
 SlotMachine --> IBoardGenerator
+SlotMachine --> IPayoutRule
+SlotMachine --> IWallet
+SlotMachine --> IGameObservable
 SlotMachine --> CollectionEngine : via rule
 
 IPayoutRule <|.. CrystalCollectionRule
@@ -76,7 +94,22 @@ IWallet <|.. WalletProxy
 WalletProxy --> PlayerWallet
 
 CommandInterpreter --> SlotMachine
+CommandInterpreter --> ICommandExpression
+ICommandExpression <|.. SpinExpression
+ICommandExpression <|.. AutoSpinExpression
+ICommandExpression <|.. BetExpression
+ICommandExpression <|.. BalanceExpression
+ICommandExpression <|.. RulesExpression
+ICommandExpression <|.. QuitExpression
+ICommandExpression <|.. SequenceExpression
+SequenceExpression o-- ICommandExpression
+
 IGameObservable <|.. GameEventHub
+IGameObserver <|.. ConsoleRenderer
+IGameObserver <|.. StatisticsTracker
+IGameObserver <|.. GameLogger
+IGameObserver <|.. TerminalUiObserver
+GameEventHub o-- IGameObserver
 Program --> DefaultGameDirector
 
 @enduml

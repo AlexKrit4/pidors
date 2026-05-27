@@ -27,7 +27,14 @@ public static class AnsiTerminalWriter
         (TuiColor.White, 255, 255, 255)
     ];
 
-    public static void Draw(View view, Rect bounds, string ansiText, TuiColor defaultForeground, TuiColor defaultBackground)
+    public static void Draw(
+        View view,
+        Rect bounds,
+        string ansiText,
+        TuiColor defaultForeground,
+        TuiColor defaultBackground,
+        int originX = 0,
+        int originY = 0)
     {
         var fg = defaultForeground;
         var bg = defaultBackground;
@@ -64,7 +71,7 @@ public static class AnsiTerminalWriter
             {
                 x = 0;
                 y++;
-                if (y >= bounds.Height)
+                if (originY + y >= bounds.Height)
                 {
                     return;
                 }
@@ -77,8 +84,11 @@ public static class AnsiTerminalWriter
                 continue;
             }
 
-            if (x >= bounds.Width)
+            var targetX = originX + x;
+            var targetY = originY + y;
+            if (targetX < 0 || targetX >= bounds.Width || targetY < 0 || targetY >= bounds.Height)
             {
+                x++;
                 continue;
             }
 
@@ -91,7 +101,7 @@ public static class AnsiTerminalWriter
                 currentBg = effBg;
             }
 
-            view.Move(x, y);
+            view.Move(targetX, targetY);
             Application.Driver.AddRune(new Rune(ch));
             x++;
         }

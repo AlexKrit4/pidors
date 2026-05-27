@@ -20,6 +20,9 @@ public sealed class ChafaConsoleApplication
     private readonly SpinPlaybackController _playback = new();
     private readonly Stopwatch _frameClock = new();
     private ChafaConsoleLayout _layout;
+    private string _renderedBoardBackground = string.Empty;
+    private int _backgroundColumns = -1;
+    private int _backgroundRows = -1;
 
     public ChafaConsoleApplication()
     {
@@ -118,13 +121,20 @@ public sealed class ChafaConsoleApplication
     private void PlaySpinAnimation(TerminalUiState state)
     {
         state.Status = "Spinning...";
-        RefreshLayoutIfNeeded();
-        WriteBottomPanel(state);
+        RedrawFull(state, BuildFrameFromPlayback());
 
         while (_playback.IsPlaying)
         {
             _frameClock.Restart();
-            RedrawBoardOnly(BuildFrameFromPlayback());
+            if (RefreshLayoutIfNeeded())
+            {
+                RedrawFull(state, BuildFrameFromPlayback());
+            }
+            else
+            {
+                RedrawBoardOnly(BuildFrameFromPlayback());
+            }
+
             _playback.Update(FrameSeconds);
 
             var waitMs = TargetFrameMs - (int)_frameClock.ElapsedMilliseconds;
@@ -188,23 +198,23 @@ public sealed class ChafaConsoleApplication
             MovingParrotColor = _playback.MovingParrotColor
         };
 
-    private void RefreshLayoutIfNeeded()
+    private bool RefreshLayoutIfNeeded()
     {
         var (width, height) = TerminalSizeReader.Read();
         var next = ChafaConsoleLayout.Measure(width, height);
         if (_layout.Matches(next))
         {
-            return;
+            return false;
         }
 
         _layout = next;
+        _renderedBoardBackground = string.Empty;
+        return true;
     }
 
     private bool TryRefreshLayout(TerminalUiState state, BoardAnimationFrame frame)
     {
-        var previous = _layout;
-        RefreshLayoutIfNeeded();
-        if (previous.Matches(_layout))
+        if (!RefreshLayoutIfNeeded())
         {
             return false;
         }
@@ -218,6 +228,7 @@ public sealed class ChafaConsoleApplication
         RefreshLayoutIfNeeded();
         Console.Write("\x1b[?25l\x1b[2J\x1b[H\x1b[0m");
         WriteHeader(state);
+        WriteBoardBackground();
         WriteBoard(frame);
         ClearPanelGap();
         WriteBottomPanel(state);
@@ -230,14 +241,39 @@ public sealed class ChafaConsoleApplication
         Console.Out.Flush();
     }
 
+    private void WriteBoardBackground()
+    {
+        try
+        {
+            if (string.IsNullOrEmpty(_renderedBoardBackground) ||
+                _backgroundColumns != _layout.Width ||
+                _backgroundRows != _layout.BoardHeight)
+            {
+                var png = _compositor.RenderBackground(_layout.Width, _layout.BoardHeight);
+                _renderedBoardBackground = ChafaCli.RenderPng(png, _layout.Width, _layout.BoardHeight, "block+space");
+                _backgroundColumns = _layout.Width;
+                _backgroundRows = _layout.BoardHeight;
+            }
+
+            WriteAnsiBlock(0, _layout.BoardTop, _layout.BoardHeight, _renderedBoardBackground);
+        }
+        catch (Exception ex)
+        {
+            WritePanelLine(
+                _layout.BoardTop,
+                $"Chafa background error: {ConsoleTextLayout.Fit(ex.Message, _layout.Width)}",
+                dim: false,
+                highlight: true);
+        }
+    }
+
     private void WriteBoard(BoardAnimationFrame frame)
     {
         try
         {
             var png = _compositor.Render(frame);
             var output = ChafaCli.RenderPng(png, _layout.BoardWidth, _layout.BoardHeight);
-            Console.SetCursorPosition(0, _layout.BoardTop);
-            Console.Write(output);
+            WriteAnsiBlock(_layout.BoardLeft, _layout.BoardTop, _layout.BoardHeight, output);
         }
         catch (Exception ex)
         {
@@ -246,6 +282,33 @@ public sealed class ChafaConsoleApplication
                 $"Chafa error: {ConsoleTextLayout.Fit(ex.Message, _layout.Width)}",
                 dim: false,
                 highlight: true);
+        }
+    }
+
+    private static void WriteAnsiBlock(int left, int top, int maxRows, string output)
+    {
+        var row = 0;
+        var start = 0;
+
+        while (row < maxRows && start <= output.Length)
+        {
+            var newline = output.IndexOf('\n', start);
+            var end = newline >= 0 ? newline : output.Length;
+            if (end > start && output[end - 1] == '\r')
+            {
+                end--;
+            }
+
+            Console.SetCursorPosition(left, top + row);
+            Console.Out.Write(output.AsSpan(start, end - start));
+
+            if (newline < 0)
+            {
+                break;
+            }
+
+            start = newline + 1;
+            row++;
         }
     }
 

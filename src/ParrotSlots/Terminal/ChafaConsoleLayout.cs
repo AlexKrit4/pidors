@@ -1,14 +1,18 @@
+using ParrotSlots.Graphics;
+
 namespace ParrotSlots.Terminal;
 
 public sealed class ChafaConsoleLayout
 {
     public const int MinWidth = 40;
     public const int MinHeight = 20;
+    private const int TerminalColumnsPerCell = 3;
 
     public int Width { get; init; }
     public int Height { get; init; }
     public int HeaderRows { get; init; }
     public int BoardTop { get; init; }
+    public int BoardLeft { get; init; }
     public int BoardWidth { get; init; }
     public int BoardHeight { get; init; }
     public int LogTop { get; init; }
@@ -27,9 +31,9 @@ public sealed class ChafaConsoleLayout
         width = Math.Max(MinWidth, width);
         height = Math.Max(MinHeight, height);
 
-        var headerRows = width >= 100 ? 2 : 1;
-        var bottomRows = height >= 34 ? 5 : height >= 28 ? 4 : 3;
-        bottomRows = Math.Min(bottomRows, height - headerRows - 8);
+        const int headerRows = 1;
+        var preferredBottomRows = height >= 34 ? 5 : height >= 28 ? 4 : 3;
+        var bottomRows = ChooseBottomRows(width, height, headerRows, preferredBottomRows);
 
         var bottomTop = height - bottomRows;
         var boardTop = headerRows;
@@ -52,13 +56,17 @@ public sealed class ChafaConsoleLayout
         var statusTop = statsTop + statsRows;
         var helpTop = helpRows > 0 ? statusTop + statusRows : -1;
 
+        var (boardWidth, measuredBoardHeight) = MeasureBoardSize(width, boardHeight);
+        boardHeight = measuredBoardHeight;
+
         return new ChafaConsoleLayout
         {
             Width = width,
             Height = height,
             HeaderRows = headerRows,
             BoardTop = boardTop,
-            BoardWidth = width,
+            BoardLeft = Math.Max(0, (width - boardWidth) / 2),
+            BoardWidth = boardWidth,
             BoardHeight = boardHeight,
             LogTop = logTop,
             LogRows = logRows,
@@ -71,11 +79,57 @@ public sealed class ChafaConsoleLayout
         };
     }
 
+    public static (int Width, int Height) MeasureBoardSize(int maxWidth, int maxHeight)
+    {
+        maxWidth = Math.Max(1, maxWidth);
+        maxHeight = Math.Max(1, maxHeight);
+
+        var cellRows = Math.Min(
+            maxWidth / (GameConstants.GridCols * TerminalColumnsPerCell),
+            maxHeight / GameConstants.GridRows);
+
+        if (cellRows <= 0)
+        {
+            return (maxWidth, maxHeight);
+        }
+
+        var width = GameConstants.GridCols * TerminalColumnsPerCell * cellRows;
+        var height = GameConstants.GridRows * cellRows;
+
+        return (width, height);
+    }
+
+    private static int ChooseBottomRows(int width, int height, int headerRows, int preferredBottomRows)
+    {
+        var minBottomRows = Math.Min(3, Math.Max(1, height - headerRows - 8));
+        var maxBottomRows = Math.Clamp(preferredBottomRows, minBottomRows, Math.Max(minBottomRows, height - headerRows - 8));
+        var bestRows = maxBottomRows;
+        var bestCellRows = -1;
+
+        for (var rows = maxBottomRows; rows >= minBottomRows; rows--)
+        {
+            var boardRows = Math.Max(1, height - headerRows - rows);
+            var cellRows = Math.Min(
+                width / (GameConstants.GridCols * TerminalColumnsPerCell),
+                boardRows / GameConstants.GridRows);
+
+            if (cellRows > bestCellRows)
+            {
+                bestCellRows = cellRows;
+                bestRows = rows;
+            }
+        }
+
+        return bestRows;
+    }
+
     public bool Matches(ChafaConsoleLayout other) =>
         Width == other.Width &&
         Height == other.Height &&
         HeaderRows == other.HeaderRows &&
         BoardTop == other.BoardTop &&
+        BoardLeft == other.BoardLeft &&
+        BoardWidth == other.BoardWidth &&
         BoardHeight == other.BoardHeight &&
         LogRows == other.LogRows &&
         StatsRows == other.StatsRows &&

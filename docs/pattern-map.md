@@ -34,13 +34,13 @@
 
 ## Interpreter
 
-**Где:** `Interpreter/CommandInterpreter.cs`, `CommandExpressions.cs`
+**Где:** `Interpreter/CommandInterpreter.cs`, `ICommandExpression.cs`, `CommandExpressions.cs`
 
-Разбор команд `spin`, `bet N`, `auto N`, цепочки через `;`.
+Разбор команд `spin`, `bet N`, `auto N`, цепочки через `;`. Каждая команда представлена отдельным `ICommandExpression`.
 
 ## Observer
 
-**Где:** `Observer/GameEventHub`, `ConsoleRenderer`, `StatisticsTracker`, `GameLogger`
+**Где:** `Observer/IGameObservable.cs`, `IGameObserver.cs`, `GameEventHub`, `ConsoleRenderer`, `StatisticsTracker`, `GameLogger`, `TerminalUiObserver`
 
 События спина, баланса и ошибок команд.
 

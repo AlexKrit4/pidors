@@ -23,7 +23,7 @@ public sealed class ChafaCli
 
     public static string? ExecutablePath => _executablePath ??= FindExecutable();
 
-    public static string RenderPng(ReadOnlySpan<byte> pngBytes, int columns, int rows)
+    public static string RenderPng(ReadOnlySpan<byte> pngBytes, int columns, int rows, string symbols = "block+space+braille")
     {
         var executable = ExecutablePath;
         if (executable is null)
@@ -38,7 +38,7 @@ public sealed class ChafaCli
 
         var arguments = new StringBuilder();
         arguments.Append("--format symbols ");
-        arguments.Append("--symbols block+space+braille ");
+        arguments.Append("--symbols ").Append(symbols).Append(' ');
         arguments.Append("--colors full ");
         arguments.Append("--color-space rgb ");
         arguments.Append("--font-ratio 1/2 ");

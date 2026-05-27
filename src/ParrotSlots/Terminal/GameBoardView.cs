@@ -15,6 +15,10 @@ public sealed class GameBoardView : View, IBoardView
     private int _originY;
     private int _lastBoundsWidth = -1;
     private int _lastBoundsHeight = -1;
+    private int _lastClearX = -1;
+    private int _lastClearY = -1;
+    private int _lastClearWidth;
+    private int _lastClearHeight;
 
     public GameBoardView(SpriteCache sprites)
     {
@@ -41,13 +45,17 @@ public sealed class GameBoardView : View, IBoardView
     public override void Redraw(Rect bounds)
     {
         Driver.SetAttribute(ColorScheme.Normal);
-        Clear();
+        var resized = UpdateScaleForBounds(bounds);
+        if (resized)
+        {
+            ClearArea(bounds, 0, 0, bounds.Width, bounds.Height);
+        }
 
-        UpdateScaleForBounds(bounds);
+        ClearRenderArea(bounds);
 
         if (_frame.Board is null)
         {
-            Move(0, 0);
+            Move(_originX, _originY);
             Driver.AddStr("Press Spin to play.");
             return;
         }
@@ -90,11 +98,11 @@ public sealed class GameBoardView : View, IBoardView
         }
     }
 
-    private void UpdateScaleForBounds(Rect bounds)
+    private bool UpdateScaleForBounds(Rect bounds)
     {
         if (bounds.Width == _lastBoundsWidth && bounds.Height == _lastBoundsHeight)
         {
-            return;
+            return false;
         }
 
         _lastBoundsWidth = bounds.Width;
@@ -108,6 +116,48 @@ public sealed class GameBoardView : View, IBoardView
         var scaledHeight = nativeHeight * _displayScale;
         _originX = Math.Max(0, (bounds.Width - scaledWidth) / 2);
         _originY = Math.Max(0, (bounds.Height - scaledHeight) / 2);
+        return true;
+    }
+
+    private void ClearRenderArea(Rect bounds)
+    {
+        var (width, height) = TerminalLayoutPlan.BoardViewSize(_sprites, _displayScale);
+        width++;
+        height++;
+
+        ClearArea(bounds, _lastClearX, _lastClearY, _lastClearWidth, _lastClearHeight);
+        ClearArea(bounds, _originX, _originY, width, height);
+
+        _lastClearX = _originX;
+        _lastClearY = _originY;
+        _lastClearWidth = width;
+        _lastClearHeight = height;
+    }
+
+    private void ClearArea(Rect bounds, int left, int top, int width, int height)
+    {
+        if (left < 0 || top < 0 || width <= 0 || height <= 0)
+        {
+            return;
+        }
+
+        var x0 = Math.Clamp(left, 0, bounds.Width);
+        var y0 = Math.Clamp(top, 0, bounds.Height);
+        var x1 = Math.Clamp(left + width, 0, bounds.Width);
+        var y1 = Math.Clamp(top + height, 0, bounds.Height);
+        var clearWidth = x1 - x0;
+        if (clearWidth <= 0 || y1 <= y0)
+        {
+            return;
+        }
+
+        Driver.SetAttribute(ColorScheme.Normal);
+        var blank = new string(' ', clearWidth);
+        for (var y = y0; y < y1; y++)
+        {
+            Move(x0, y);
+            Driver.AddStr(blank);
+        }
     }
 
     private void DrawGrid(Rect bounds)

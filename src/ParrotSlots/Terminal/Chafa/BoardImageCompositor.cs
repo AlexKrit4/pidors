@@ -9,8 +9,11 @@ namespace ParrotSlots.Terminal.Chafa;
 
 public sealed class BoardImageCompositor
 {
-    public const int CellPixelSize = 48;
+    public const int CellPixelSize = 96;
+    private const int TerminalCellPixelWidth = 4;
+    private const int TerminalCellPixelHeight = 8;
     private static readonly Rgba32 FallbackBackground = new(0, 0, 170, 255);
+    private static readonly Rgba32 BoardBackdrop = new(8, 17, 42, 238);
 
     private readonly ImageCatalog _catalog;
     private readonly Dictionary<string, Image<Rgba32>> _images = new(StringComparer.OrdinalIgnoreCase);
@@ -29,7 +32,7 @@ public sealed class BoardImageCompositor
         var height = GameConstants.GridRows * CellPixelSize;
 
         using var canvas = new Image<Rgba32>(width, height);
-        DrawBackground(canvas);
+        DrawBoardBackdrop(canvas);
         DrawGrid(canvas);
 
         var board = frame.Board;
@@ -72,6 +75,20 @@ public sealed class BoardImageCompositor
         return stream.ToArray();
     }
 
+    public byte[] RenderBackground(int terminalColumns, int terminalRows)
+    {
+        var width = Math.Max(1, terminalColumns) * TerminalCellPixelWidth;
+        var height = Math.Max(1, terminalRows) * TerminalCellPixelHeight;
+
+        using var canvas = new Image<Rgba32>(width, height);
+        DrawBackground(canvas);
+        SoftenBackground(canvas);
+
+        using var stream = new MemoryStream();
+        canvas.SaveAsPng(stream);
+        return stream.ToArray();
+    }
+
     private void DrawBackground(Image<Rgba32> canvas)
     {
         var background = LoadBackground(canvas.Width, canvas.Height);
@@ -82,6 +99,31 @@ public sealed class BoardImageCompositor
         }
 
         canvas.Mutate(ctx => ctx.DrawImage(background, new Point(0, 0), 1f));
+    }
+
+    private static void DrawBoardBackdrop(Image<Rgba32> canvas)
+    {
+        canvas.Mutate(ctx => ctx.BackgroundColor(BoardBackdrop));
+    }
+
+    private static void SoftenBackground(Image<Rgba32> canvas)
+    {
+        canvas.ProcessPixelRows(accessor =>
+        {
+            for (var y = 0; y < accessor.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (var x = 0; x < row.Length; x++)
+                {
+                    var pixel = row[x];
+                    row[x] = new Rgba32(
+                        (byte)(pixel.R * 0.45f),
+                        (byte)(pixel.G * 0.45f),
+                        (byte)(pixel.B * 0.50f),
+                        pixel.A);
+                }
+            }
+        });
     }
 
     private static void DrawGrid(Image<Rgba32> canvas)
