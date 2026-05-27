@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ParrotSlots (Raylib)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/ParrotSlots/bin/Debug/net9.0/ParrotSlots.dll",
+      "args": [],
+      "cwd": "${workspaceFolder}/src/ParrotSlots",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "ParrotSlots (Terminal UI)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/ParrotSlots/bin/Debug/net9.0/ParrotSlots.dll",
+      "args": ["--terminal"],
+      "cwd": "${workspaceFolder}/src/ParrotSlots",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    },
+    {
+      "name": "ParrotSlots (Text mode)",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "build",
+      "program": "${workspaceFolder}/src/ParrotSlots/bin/Debug/net9.0/ParrotSlots.dll",
+      "args": ["--text"],
+      "cwd": "${workspaceFolder}/src/ParrotSlots",
+      "console": "integratedTerminal",
+      "stopAtEntry": false
+    }
+  ]
+}

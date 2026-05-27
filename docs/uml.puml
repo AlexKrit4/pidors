@@ -1,0 +1,82 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package Core {
+  class GameBoard
+  class Cell
+  enum ParrotColor
+  interface IPayTable
+  interface IBoardGenerator
+  interface ISymbolSet
+  class CollectionEngine
+  class BoardGenerator
+}
+
+package Settings {
+  class GameSettings <<Singleton>>
+}
+
+package Themes <<Abstract Factory>> {
+  interface ISlotThemeFactory
+  class PirateParrotThemeFactory
+  class JungleParrotThemeFactory
+}
+
+package Builder {
+  class SlotMachineBuilder
+  class DefaultGameDirector
+}
+
+package Rules <<Composite>> {
+  interface IPayoutRule
+  class CrystalCollectionRule
+  class PayoutRuleGroup
+  class PayoutContext
+}
+
+package Wallet <<Proxy>> {
+  interface IWallet
+  class PlayerWallet
+  class WalletProxy
+}
+
+package Interpreter {
+  class CommandInterpreter
+  interface ICommandExpression
+}
+
+package Observer {
+  interface IGameObservable
+  interface IGameObserver
+  class GameEventHub
+  class ConsoleRenderer
+}
+
+class SlotMachine
+class Program
+
+ISlotThemeFactory <|.. PirateParrotThemeFactory
+ISlotThemeFactory <|.. JungleParrotThemeFactory
+ISlotThemeFactory ..> ISymbolSet
+ISlotThemeFactory ..> IPayTable
+ISlotThemeFactory ..> IBoardGenerator
+
+DefaultGameDirector --> SlotMachineBuilder
+SlotMachineBuilder --> SlotMachine
+SlotMachine --> IBoardGenerator
+SlotMachine --> CollectionEngine : via rule
+
+IPayoutRule <|.. CrystalCollectionRule
+IPayoutRule <|.. PayoutRuleGroup
+CrystalCollectionRule --> CollectionEngine
+PayoutRuleGroup o-- IPayoutRule
+
+IWallet <|.. PlayerWallet
+IWallet <|.. WalletProxy
+WalletProxy --> PlayerWallet
+
+CommandInterpreter --> SlotMachine
+IGameObservable <|.. GameEventHub
+Program --> DefaultGameDirector
+
+@enduml

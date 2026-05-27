@@ -1,0 +1,23 @@
+# Build
+**/bin/
+**/obj/
+**/out/
+
+# IDE
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Local temp / probes
+tmp/
+
+# NuGet
+*.nupkg
+project.lock.json
