@@ -8,6 +8,7 @@
 |------|------------|
 | [pattern-map.md](pattern-map.md) | Краткая карта паттернов и ключевых классов |
 | [patterns.md](patterns.md) | Подробное описание применения паттернов |
+| [presentation-plan.md](presentation-plan.md) | Распределение тем выступления на 5 человек |
 | [uml.puml](uml.puml) | PlantUML-версия диаграммы |
 
 ## Паттерны
