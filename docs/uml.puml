@@ -1,0 +1,115 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+package Core {
+  class GameBoard
+  class Cell
+  enum ParrotColor
+  interface IPayTable
+  interface IBoardGenerator
+  interface ISymbolSet
+  class CollectionEngine
+  class BoardGenerator
+}
+
+package Settings {
+  class GameSettings <<Singleton>>
+}
+
+package Themes <<Abstract Factory>> {
+  interface ISlotThemeFactory
+  class PirateParrotThemeFactory
+  class JungleParrotThemeFactory
+}
+
+package Builder {
+  class SlotMachineBuilder
+  class DefaultGameDirector
+}
+
+package Rules <<Composite>> {
+  interface IPayoutRule
+  class CrystalCollectionRule
+  class PayoutRuleGroup
+  class PayoutContext
+}
+
+package Wallet <<Proxy>> {
+  interface IWallet
+  class PlayerWallet
+  class WalletProxy
+}
+
+package Interpreter {
+  class CommandInterpreter
+  interface ICommandExpression
+  class SpinExpression
+  class AutoSpinExpression
+  class BetExpression
+  class BalanceExpression
+  class RulesExpression
+  class QuitExpression
+  class SequenceExpression
+}
+
+package Observer {
+  interface IGameObservable
+  interface IGameObserver
+  class GameEventHub
+  class ConsoleRenderer
+  class StatisticsTracker
+  class GameLogger
+  class TerminalUiObserver
+}
+
+class SlotMachine
+class Program
+
+ISlotThemeFactory <|.. PirateParrotThemeFactory
+ISlotThemeFactory <|.. JungleParrotThemeFactory
+ISlotThemeFactory ..> ISymbolSet
+ISlotThemeFactory ..> IPayTable
+ISlotThemeFactory ..> IBoardGenerator
+
+DefaultGameDirector --> GameEventHub
+DefaultGameDirector --> SlotMachineBuilder
+SlotMachineBuilder --> SlotMachine
+SlotMachineBuilder --> ISlotThemeFactory
+SlotMachineBuilder --> IWallet
+SlotMachineBuilder --> IPayoutRule
+SlotMachineBuilder --> IGameObservable
+SlotMachine --> IBoardGenerator
+SlotMachine --> IPayoutRule
+SlotMachine --> IWallet
+SlotMachine --> IGameObservable
+SlotMachine --> CollectionEngine : via rule
+
+IPayoutRule <|.. CrystalCollectionRule
+IPayoutRule <|.. PayoutRuleGroup
+CrystalCollectionRule --> CollectionEngine
+PayoutRuleGroup o-- IPayoutRule
+
+IWallet <|.. PlayerWallet
+IWallet <|.. WalletProxy
+WalletProxy --> PlayerWallet
+
+CommandInterpreter --> SlotMachine
+CommandInterpreter --> ICommandExpression
+ICommandExpression <|.. SpinExpression
+ICommandExpression <|.. AutoSpinExpression
+ICommandExpression <|.. BetExpression
+ICommandExpression <|.. BalanceExpression
+ICommandExpression <|.. RulesExpression
+ICommandExpression <|.. QuitExpression
+ICommandExpression <|.. SequenceExpression
+SequenceExpression o-- ICommandExpression
+
+IGameObservable <|.. GameEventHub
+IGameObserver <|.. ConsoleRenderer
+IGameObserver <|.. StatisticsTracker
+IGameObserver <|.. GameLogger
+IGameObserver <|.. TerminalUiObserver
+GameEventHub o-- IGameObserver
+Program --> DefaultGameDirector
+
+@enduml

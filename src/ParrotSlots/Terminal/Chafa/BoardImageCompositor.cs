@@ -1,0 +1,313 @@
+using ParrotSlots.Assets;
+using ParrotSlots.Core;
+using ParrotSlots.Graphics;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+
+namespace ParrotSlots.Terminal.Chafa;
+
+public sealed class BoardImageCompositor
+{
+    public const int CellPixelSize = 96;
+    private const int TerminalCellPixelWidth = 4;
+    private const int TerminalCellPixelHeight = 8;
+    private static readonly Rgba32 FallbackBackground = new(0, 0, 170, 255);
+    private static readonly Rgba32 BoardBackdrop = new(8, 17, 42, 238);
+
+    private readonly ImageCatalog _catalog;
+    private readonly Dictionary<string, Image<Rgba32>> _images = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, Image<Rgba32>> _backgroundCache = new(StringComparer.OrdinalIgnoreCase);
+
+    public BoardImageCompositor(ImageCatalog catalog) => _catalog = catalog;
+
+    public byte[] Render(BoardAnimationFrame frame, ChafaConsoleLayout layout)
+    {
+        if (frame.Board is null)
+        {
+            return RenderMessage("Press Spin to play.", layout);
+        }
+
+        var width = GameConstants.GridCols * CellPixelSize;
+        var height = GameConstants.GridRows * CellPixelSize;
+
+        using var canvas = new Image<Rgba32>(width, height);
+        DrawBoardBackdrop(canvas, layout);
+        DrawGrid(canvas);
+
+        var board = frame.Board;
+        for (var row = 0; row < board.Rows; row++)
+        {
+            for (var col = 0; col < board.Cols; col++)
+            {
+                if (ShouldSkipCell(frame, row, col))
+                {
+                    continue;
+                }
+
+                var cell = board.Get(row, col);
+                if (cell.IsEmpty)
+                {
+                    continue;
+                }
+
+                var offsetY = frame.CellOffsetY?[row, col] ?? 0f;
+                DrawCell(canvas, cell, col, row, offsetY);
+            }
+        }
+
+        if (frame.MovingParrotFrom is not null &&
+            frame.MovingParrotTo is not null &&
+            frame.MovingParrotColor is not null)
+        {
+            var from = frame.MovingParrotFrom.Value;
+            var to = frame.MovingParrotTo.Value;
+            var t = Math.Clamp(frame.MovingParrotT, 0f, 1f);
+            var display = board.Get(to.Row, to.Col).Display;
+            var parrot = Cell.Parrot(frame.MovingParrotColor.Value, display);
+            var x = (from.Col + (to.Col - from.Col) * t) * CellPixelSize;
+            var y = (from.Row + (to.Row - from.Row) * t) * CellPixelSize;
+            DrawCellAt(canvas, parrot, x, y);
+        }
+
+        using var stream = new MemoryStream();
+        canvas.SaveAsPng(stream);
+        return stream.ToArray();
+    }
+
+    public byte[] RenderBackground(int terminalColumns, int terminalRows)
+    {
+        var width = Math.Max(1, terminalColumns) * TerminalCellPixelWidth;
+        var height = Math.Max(1, terminalRows) * TerminalCellPixelHeight;
+
+        using var canvas = new Image<Rgba32>(width, height);
+        DrawBackground(canvas);
+        SoftenBackground(canvas);
+
+        using var stream = new MemoryStream();
+        canvas.SaveAsPng(stream);
+        return stream.ToArray();
+    }
+
+    private void DrawBackground(Image<Rgba32> canvas)
+    {
+        var background = LoadBackground(canvas.Width, canvas.Height);
+        if (background is null)
+        {
+            canvas.Mutate(ctx => ctx.BackgroundColor(FallbackBackground));
+            return;
+        }
+
+        canvas.Mutate(ctx => ctx.DrawImage(background, new Point(0, 0), 1f));
+    }
+
+    private void DrawBoardBackdrop(Image<Rgba32> canvas, ChafaConsoleLayout layout)
+    {
+        var fullBgWidth = Math.Max(1, layout.Width) * TerminalCellPixelWidth;
+        var fullBgHeight = Math.Max(1, layout.Height) * TerminalCellPixelHeight;
+        
+        var background = LoadBackground(fullBgWidth, fullBgHeight);
+        if (background is not null)
+        {
+            var boardX = layout.BoardLeft * TerminalCellPixelWidth;
+            var boardY = layout.BoardTop * TerminalCellPixelHeight;
+            var boardWidthPx = layout.BoardWidth * TerminalCellPixelWidth;
+            var boardHeightPx = layout.BoardHeight * TerminalCellPixelHeight;
+            
+            var cropRect = new Rectangle(boardX, boardY, boardWidthPx, boardHeightPx);
+            cropRect.Intersect(background.Bounds);
+
+            if (cropRect.Width > 0 && cropRect.Height > 0)
+            {
+                using var croppedBg = background.Clone(ctx => ctx.Crop(cropRect));
+                
+                SoftenBackground(croppedBg);
+
+                croppedBg.Mutate(ctx => ctx.Resize(new ResizeOptions
+                {
+                    Size = new Size(canvas.Width, canvas.Height),
+                    Mode = ResizeMode.Stretch
+                }));
+
+                canvas.Mutate(ctx => ctx.DrawImage(croppedBg, new Point(0, 0), 1f));
+            }
+            else
+            {
+                canvas.Mutate(ctx => ctx.BackgroundColor(FallbackBackground));
+            }
+        }
+        else
+        {
+            canvas.Mutate(ctx => ctx.BackgroundColor(FallbackBackground));
+        }
+    }
+
+    private static void SoftenBackground(Image<Rgba32> canvas)
+    {
+        canvas.ProcessPixelRows(accessor =>
+        {
+            for (var y = 0; y < accessor.Height; y++)
+            {
+                var row = accessor.GetRowSpan(y);
+                for (var x = 0; x < row.Length; x++)
+                {
+                    var pixel = row[x];
+                    row[x] = new Rgba32(
+                        (byte)(pixel.R * 0.45f),
+                        (byte)(pixel.G * 0.45f),
+                        (byte)(pixel.B * 0.50f),
+                        pixel.A);
+                }
+            }
+        });
+    }
+
+    private static void DrawGrid(Image<Rgba32> canvas)
+    {
+        var line = new Rgba32(255, 255, 255, 72);
+
+        for (var col = 1; col < GameConstants.GridCols; col++)
+        {
+            var x = col * CellPixelSize;
+            for (var y = 0; y < canvas.Height; y++)
+            {
+                canvas[x, y] = line;
+            }
+        }
+
+        for (var row = 1; row < GameConstants.GridRows; row++)
+        {
+            var y = row * CellPixelSize;
+            for (var x = 0; x < canvas.Width; x++)
+            {
+                canvas[x, y] = line;
+            }
+        }
+
+        var border = new Rgba32(255, 255, 255, 120);
+        for (var x = 0; x < canvas.Width; x++)
+        {
+            canvas[x, 0] = border;
+            canvas[x, canvas.Height - 1] = border;
+        }
+
+        for (var y = 0; y < canvas.Height; y++)
+        {
+            canvas[0, y] = border;
+            canvas[canvas.Width - 1, y] = border;
+        }
+    }
+
+    private Image<Rgba32>? LoadBackground(int width, int height)
+    {
+        var path = _catalog.GetBackgroundPath();
+        if (path is null)
+        {
+            return null;
+        }
+
+        var key = $"{path}|{width}x{height}";
+        if (_backgroundCache.TryGetValue(key, out var cached))
+        {
+            return cached;
+        }
+
+        using var source = Image.Load<Rgba32>(path);
+        var resized = source.Clone(ctx => ctx.Resize(new ResizeOptions
+        {
+            Size = new Size(width, height),
+            Mode = ResizeMode.Crop,
+            Position = AnchorPositionMode.Center,
+            Sampler = KnownResamplers.Bicubic
+        }));
+
+        _backgroundCache[key] = resized;
+        return resized;
+    }
+
+    private static bool ShouldSkipCell(BoardAnimationFrame frame, int row, int col)
+    {
+        if (frame.MovingParrotFrom is null ||
+            frame.MovingParrotTo is null ||
+            frame.MovingParrotColor is null)
+        {
+            return false;
+        }
+
+        var from = frame.MovingParrotFrom.Value;
+        if (row == from.Row && col == from.Col)
+        {
+            return true;
+        }
+
+        var to = frame.MovingParrotTo.Value;
+        return row == to.Row && col == to.Col;
+    }
+
+    private void DrawCell(Image<Rgba32> canvas, Cell cell, int col, int row, float offsetY)
+    {
+        var x = col * CellPixelSize;
+        var y = row * CellPixelSize + offsetY;
+        DrawCellAt(canvas, cell, x, y);
+    }
+
+    private void DrawCellAt(Image<Rgba32> canvas, Cell cell, float x, float y)
+    {
+        var sprite = LoadImage(cell);
+        if (sprite is null)
+        {
+            return;
+        }
+
+        var point = new Point((int)Math.Round(x), (int)Math.Round(y));
+        canvas.Mutate(ctx => ctx.DrawImage(sprite, point, 1f));
+    }
+
+    private Image<Rgba32>? LoadImage(Cell cell)
+    {
+        var path = cell.IsParrot
+            ? _catalog.GetParrotPath(cell.Color)
+            : _catalog.GetCrystalPath(cell.Color, cell.Level);
+
+        if (_images.TryGetValue(path, out var cached))
+        {
+            return cached;
+        }
+
+        if (!File.Exists(path))
+        {
+            return null;
+        }
+
+        var image = AssetImagePreparer.LoadCroppedCellImage(path, CellPixelSize);
+        _images[path] = image;
+        return image;
+    }
+
+    private byte[] RenderMessage(string message, ChafaConsoleLayout layout)
+    {
+        using var image = new Image<Rgba32>(320, 80);
+        
+        var fullBgWidth = Math.Max(1, layout.Width) * TerminalCellPixelWidth;
+        var fullBgHeight = Math.Max(1, layout.Height) * TerminalCellPixelHeight;
+        var background = LoadBackground(fullBgWidth, fullBgHeight);
+        
+        if (background is not null)
+        {
+            var boardX = layout.BoardLeft * TerminalCellPixelWidth;
+            var boardWidth = layout.BoardWidth * TerminalCellPixelWidth;
+            using var croppedBg = background.Clone(ctx => ctx.Crop(new Rectangle(boardX, layout.BoardTop * TerminalCellPixelHeight, boardWidth, image.Height)));
+            SoftenBackground(croppedBg);
+            croppedBg.Mutate(ctx => ctx.Resize(new ResizeOptions { Size = image.Size, Mode = ResizeMode.Stretch }));
+            image.Mutate(ctx => ctx.DrawImage(croppedBg, new Point(0, 0), 1f));
+        }
+        else
+        {
+            image.Mutate(ctx => ctx.BackgroundColor(FallbackBackground));
+        }
+        
+        using var stream = new MemoryStream();
+        image.SaveAsPng(stream);
+        return stream.ToArray();
+    }
+}

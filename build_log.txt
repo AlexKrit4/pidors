@@ -1,0 +1,40 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 DONE 0.0s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.24kB done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:9.0
+#2 DONE 0.4s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 2B done
+#3 DONE 0.0s
+
+#4 [1/9] FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:c6a1f83156998790d89bfaf51f891aeab539bfa0792f7ddc19b63ba49b2ed8f2
+#4 DONE 0.0s
+
+#5 [internal] load build context
+#5 transferring context: 13.47kB done
+#5 DONE 0.0s
+
+#6 [3/9] RUN apt-get update && apt-get install -y chafa && rm -rf /var/lib/apt/lists/*
+#6 CACHED
+
+#7 [2/9] WORKDIR /app
+#7 CACHED
+
+#8 [4/9] COPY ParrotSlots.sln .
+#8 CACHED
+
+#9 [5/9] COPY src/ParrotSlots/ParrotSlots.csproj src/ParrotSlots/
+#9 DONE 0.0s
+
+#10 [6/9] COPY tests/ParrotSlots.Tests/ParrotSlots.Tests.csproj tests/ParrotSlots.Tests/
+#10 DONE 0.0s
+
+#11 [7/9] RUN dotnet restore ParrotSlots.sln
+#11 0.911   Determining projects to restore...
