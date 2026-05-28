@@ -57,7 +57,8 @@ public static class CascadePlanner
                 }
 
                 var color = ParrotColors.All[random.Next(ParrotColors.All.Count)];
-                var cell = Cell.Crystal(color, 1, symbols.GetCrystalDisplay(color, 1));
+                var level = CrystalLevelPicker.NextLevel(random);
+                var cell = Cell.Crystal(color, level, symbols.GetCrystalDisplay(color, level));
                 final.Set(row, col, cell);
                 newCells.Add((row, col, cell));
             }

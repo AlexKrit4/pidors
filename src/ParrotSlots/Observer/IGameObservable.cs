@@ -10,4 +10,5 @@ public interface IGameObservable
     void NotifyBalanceChanged(int balance, int bet);
     void NotifyModifierTriggered(string modifierName, string details);
     void NotifyCommandFailed(string reason);
+    void NotifyGameOver(bool won, string message);
 }

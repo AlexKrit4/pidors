@@ -40,9 +40,11 @@ public sealed class RaylibGameApplication : IDisposable
 
             if (_wasPlaying && !_playback.IsPlaying && _game is not null)
             {
-                _status = _lastSpinWin > 0
-                    ? $"Win: {_lastSpinWin}. Balance: {_game.Balance}, Bet: {_game.CurrentBet}"
-                    : $"No win. Balance: {_game.Balance}, Bet: {_game.CurrentBet}";
+                _status = _game.IsGameOver
+                    ? _game.RunMessage
+                    : _lastSpinWin > 0
+                        ? $"Win: {_lastSpinWin}. Balance: {_game.Balance}, Bet: {_game.CurrentBet}"
+                        : $"No win. Balance: {_game.Balance}, Bet: {_game.CurrentBet}";
             }
 
             _wasPlaying = _playback.IsPlaying;
@@ -100,6 +102,12 @@ public sealed class RaylibGameApplication : IDisposable
 
         if (_hud.IsBetDownClicked())
         {
+            if (_game.IsGameOver)
+            {
+                _status = _game.RunMessage;
+                return;
+            }
+
             var next = Math.Clamp(_game.CurrentBet - 5, GameSettings.Instance.MinBet, GameSettings.Instance.MaxBet);
             _game.SetBet(next);
             _status = $"Bet set to {_game.CurrentBet}.";
@@ -107,6 +115,12 @@ public sealed class RaylibGameApplication : IDisposable
 
         if (_hud.IsBetUpClicked())
         {
+            if (_game.IsGameOver)
+            {
+                _status = _game.RunMessage;
+                return;
+            }
+
             var next = Math.Clamp(_game.CurrentBet + 5, GameSettings.Instance.MinBet, GameSettings.Instance.MaxBet);
             _game.SetBet(next);
             _status = $"Bet set to {_game.CurrentBet}.";
@@ -116,7 +130,7 @@ public sealed class RaylibGameApplication : IDisposable
         {
             if (!_game.CanSpin())
             {
-                _status = "Cannot spin: check balance and bet.";
+                _status = _game.IsGameOver ? _game.RunMessage : "Cannot spin: check balance and bet.";
                 return;
             }
 

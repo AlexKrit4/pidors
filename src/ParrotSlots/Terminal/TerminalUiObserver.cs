@@ -9,6 +9,8 @@ public sealed class TerminalUiState
     public int Balance { get; set; }
     public int Bet { get; set; }
     public int LastWin { get; set; }
+    public int SpinsLeft { get; set; }
+    public int TargetBalance { get; set; }
     public IReadOnlyList<string> Messages { get; set; } = [];
     public string Status { get; set; } = "Press Spin to play.";
 }
@@ -45,6 +47,9 @@ public sealed class TerminalUiObserver : IGameObserver
             case GameEventType.CommandFailed:
                 _state.Status = $"ERROR: {gameEvent.Message}";
                 break;
+            case GameEventType.GameOver:
+                _state.Status = gameEvent.Message;
+                break;
         }
 
         _refresh();
@@ -54,6 +59,8 @@ public sealed class TerminalUiObserver : IGameObserver
     {
         _state.Balance = game.Balance;
         _state.Bet = game.CurrentBet;
+        _state.SpinsLeft = game.SpinsLeft;
+        _state.TargetBalance = game.TargetBalance;
         _refresh();
     }
 }

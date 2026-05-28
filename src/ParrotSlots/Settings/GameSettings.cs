@@ -18,4 +18,7 @@ public sealed class GameSettings
     public int MinBet => 1;
     public int MaxBet => 100;
     public int DefaultBet => 10;
+    public int SpinLimit => 20;
+    public int TargetBalance => 1500;
+    public double PayoutScale => 0.08;
 }

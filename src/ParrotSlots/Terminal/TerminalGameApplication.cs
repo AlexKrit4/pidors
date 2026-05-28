@@ -62,7 +62,10 @@ public sealed class TerminalGameApplication
 
             void RefreshUi()
             {
-                infoLabel.Text = $"Balance: {state.Balance}   Bet: {state.Bet}   Last win: {state.LastWin}";
+                var runInfo = game is null
+                    ? string.Empty
+                    : $"   Goal: {game.TargetBalance}   Spins: {game.SpinsLeft}";
+                infoLabel.Text = $"Balance: {state.Balance}   Bet: {state.Bet}   Last win: {state.LastWin}{runInfo}";
                 statusLabel.Text = state.Status;
 
                 if (_playback.IsPlaying)
@@ -96,7 +99,7 @@ public sealed class TerminalGameApplication
                 {
                     if (!_playback.IsPlaying)
                     {
-                        SetControlsEnabled(true);
+                        SetControlsEnabled(game?.IsGameOver != true);
                         Refresh();
                         return false;
                     }
@@ -194,7 +197,7 @@ public sealed class TerminalGameApplication
                     return;
                 }
 
-                state.Status = $"Balance: {game.Balance}, Bet: {game.CurrentBet}";
+                state.Status = $"Balance: {game.Balance}, Bet: {game.CurrentBet}, Spins: {game.SpinsLeft}, Goal: {game.TargetBalance}";
                 Refresh();
             };
 
@@ -215,8 +218,7 @@ public sealed class TerminalGameApplication
             window.Add(infoLabel, boardView, logView, statusLabel, spinButton, betDownButton, betUpButton, balanceButton, rulesButton, quitButton);
             top.Add(window);
 
-            state.Balance = game.Balance;
-            state.Bet = game.CurrentBet;
+            uiObserver.SyncFromGame(game);
             if (game.LastBoard is not null)
             {
                 state.Board = game.LastBoard;
@@ -259,7 +261,7 @@ public sealed class TerminalGameApplication
 
         if (!game.CanSpin())
         {
-            state.Status = "Cannot spin: check balance and bet.";
+            state.Status = game.IsGameOver ? game.RunMessage : "Cannot spin: check balance and bet.";
             refresh();
             return;
         }
@@ -286,6 +288,13 @@ public sealed class TerminalGameApplication
     {
         if (isAnimating)
         {
+            return;
+        }
+
+        if (game.IsGameOver)
+        {
+            state.Status = game.RunMessage;
+            refresh();
             return;
         }
 

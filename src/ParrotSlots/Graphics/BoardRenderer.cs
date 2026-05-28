@@ -126,7 +126,7 @@ public sealed class HudRenderer
 {
     public void Draw(SlotMachine game, string status, IReadOnlyList<string> logLines)
     {
-        Raylib.DrawText($"Balance: {game.Balance}   Bet: {game.CurrentBet}", 20, GameConstants.WindowHeight - GameConstants.InfoPanelHeight + 10, 20, Color.White);
+        Raylib.DrawText($"Balance: {game.Balance}   Bet: {game.CurrentBet}   Goal: {game.TargetBalance}   Spins: {game.SpinsLeft}", 20, GameConstants.WindowHeight - GameConstants.InfoPanelHeight + 10, 20, Color.White);
         Raylib.DrawText(status, 20, GameConstants.WindowHeight - GameConstants.InfoPanelHeight + 35, 18, Color.Gold);
 
         var y = 20;
@@ -138,7 +138,7 @@ public sealed class HudRenderer
 
         DrawButton(new Rectangle(20, GameConstants.WindowHeight - 55, 100, 40), "BET -", false);
         DrawButton(new Rectangle(130, GameConstants.WindowHeight - 55, 100, 40), "BET +", false);
-        DrawButton(new Rectangle(GameConstants.WindowWidth / 2f - 60, GameConstants.WindowHeight - 60, 120, 50), "SPIN", true);
+        DrawButton(new Rectangle(GameConstants.WindowWidth / 2f - 60, GameConstants.WindowHeight - 60, 120, 50), game.IsGameOver ? "OVER" : "SPIN", !game.IsGameOver);
         DrawButton(new Rectangle(GameConstants.WindowWidth - 120, GameConstants.WindowHeight - 55, 100, 40), "QUIT", false);
     }
 

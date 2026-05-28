@@ -8,18 +8,20 @@ public enum GameEventType
     SpinFinished,
     BalanceChanged,
     ModifierTriggered,
-    CommandFailed
+    CommandFailed,
+    GameOver
 }
 
 public sealed class GameEvent
 {
-    public GameEvent(GameEventType type, string message, SpinResult? spinResult = null, int balance = 0, int bet = 0)
+    public GameEvent(GameEventType type, string message, SpinResult? spinResult = null, int balance = 0, int bet = 0, bool? won = null)
     {
         Type = type;
         Message = message;
         SpinResult = spinResult;
         Balance = balance;
         Bet = bet;
+        Won = won;
     }
 
     public GameEventType Type { get; }
@@ -27,4 +29,5 @@ public sealed class GameEvent
     public SpinResult? SpinResult { get; }
     public int Balance { get; }
     public int Bet { get; }
+    public bool? Won { get; }
 }

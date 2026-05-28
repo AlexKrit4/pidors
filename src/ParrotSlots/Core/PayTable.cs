@@ -1,3 +1,5 @@
+using ParrotSlots.Settings;
+
 namespace ParrotSlots.Core;
 
 public sealed class PayTable : IPayTable
@@ -19,6 +21,7 @@ public sealed class PayTable : IPayTable
             return 0;
         }
 
-        return Math.Max(1, (int)Math.Round(multiplier * bet));
+        var scaledPayout = multiplier * bet * GameSettings.Instance.PayoutScale;
+        return Math.Max(0, (int)Math.Round(scaledPayout, MidpointRounding.AwayFromZero));
     }
 }

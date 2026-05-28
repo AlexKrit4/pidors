@@ -4,8 +4,9 @@ public sealed class SpinExpression : ICommandExpression
 {
     public CommandResult Execute(SlotMachine game)
     {
-        game.Spin();
-        return new CommandResult(CommandResultType.Continue);
+        return game.Spin() is null
+            ? new CommandResult(CommandResultType.Continue, game.RunMessage)
+            : new CommandResult(CommandResultType.Continue);
     }
 }
 
@@ -19,6 +20,11 @@ public sealed class AutoSpinExpression : ICommandExpression
     {
         for (var i = 0; i < Count; i++)
         {
+            if (game.IsGameOver)
+            {
+                return new CommandResult(CommandResultType.Continue, game.RunMessage);
+            }
+
             if (!game.CanSpin())
             {
                 return new CommandResult(CommandResultType.Continue, "Auto spin stopped: insufficient balance.");
@@ -47,7 +53,7 @@ public sealed class BetExpression : ICommandExpression
 public sealed class BalanceExpression : ICommandExpression
 {
     public CommandResult Execute(SlotMachine game) =>
-        new(CommandResultType.ShowBalance, $"Balance: {game.Balance}, Bet: {game.CurrentBet}");
+        new(CommandResultType.ShowBalance, $"Balance: {game.Balance}, Bet: {game.CurrentBet}, Spins: {game.SpinsLeft}, Target: {game.TargetBalance}");
 }
 
 public sealed class RulesExpression : ICommandExpression

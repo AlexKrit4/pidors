@@ -34,6 +34,9 @@ public sealed class GameEventHub : IGameObservable
     public void NotifyCommandFailed(string reason) =>
         Publish(new GameEvent(GameEventType.CommandFailed, reason));
 
+    public void NotifyGameOver(bool won, string message) =>
+        Publish(new GameEvent(GameEventType.GameOver, message, won: won));
+
     private void Publish(GameEvent gameEvent)
     {
         foreach (var observer in _observers)

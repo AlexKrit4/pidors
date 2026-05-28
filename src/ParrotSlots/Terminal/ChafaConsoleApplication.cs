@@ -46,8 +46,7 @@ public sealed class ChafaConsoleApplication
         var uiObserver = new TerminalUiObserver(state, () => { });
         var game = TerminalGameBootstrap.CreateGame(uiObserver);
 
-        state.Balance = game.Balance;
-        state.Bet = game.CurrentBet;
+        SyncRunState(state, game);
         if (game.LastBoard is not null)
         {
             state.Board = game.LastBoard;
@@ -72,6 +71,7 @@ public sealed class ChafaConsoleApplication
             if (_playback.IsPlaying)
             {
                 PlaySpinAnimation(state);
+                SyncRunState(state, game);
                 state.Board = game.LastBoard;
                 RedrawFull(state, BuildIdleFrame(state));
                 continue;
@@ -150,7 +150,9 @@ public sealed class ChafaConsoleApplication
     {
         if (_playback.IsPlaying || !game.CanSpin())
         {
-            state.Status = _playback.IsPlaying ? "Already spinning." : "Cannot spin: check balance and bet.";
+            state.Status = _playback.IsPlaying
+                ? "Already spinning."
+                : game.IsGameOver ? game.RunMessage : "Cannot spin: check balance and bet.";
             RedrawFull(state, BuildIdleFrame(state));
             return;
         }
@@ -165,14 +167,22 @@ public sealed class ChafaConsoleApplication
         }
 
         state.Messages = session.Messages;
+        SyncRunState(state, game);
         _playback.Start(session, previous, fallOutPrevious: previous is not null);
     }
 
     private static void ChangeBet(SlotMachine game, TerminalUiState state, int delta)
     {
+        if (game.IsGameOver)
+        {
+            state.Status = game.RunMessage;
+            return;
+        }
+
         var settings = GameSettings.Instance;
         var next = Math.Clamp(game.CurrentBet + delta, settings.MinBet, settings.MaxBet);
         game.SetBet(next);
+        SyncRunState(state, game);
     }
 
     private static void ShowRules(SlotMachine game)
@@ -183,6 +193,18 @@ public sealed class ChafaConsoleApplication
         Console.WriteLine();
         Console.WriteLine("Press any key to return...");
         Console.ReadKey(intercept: true);
+    }
+
+    private static void SyncRunState(TerminalUiState state, SlotMachine game)
+    {
+        state.Balance = game.Balance;
+        state.Bet = game.CurrentBet;
+        state.SpinsLeft = game.SpinsLeft;
+        state.TargetBalance = game.TargetBalance;
+        if (game.IsGameOver)
+        {
+            state.Status = game.RunMessage;
+        }
     }
 
     private BoardAnimationFrame BuildIdleFrame(TerminalUiState state) =>
@@ -339,7 +361,7 @@ public sealed class ChafaConsoleApplication
 
     private void WriteBottomPanel(TerminalUiState state)
     {
-        var stats = $"Bal {state.Balance} Bet {state.Bet} Win {state.LastWin}";
+        var stats = $"Bal {state.Balance} Bet {state.Bet} Win {state.LastWin} Goal {state.TargetBalance} Spins {state.SpinsLeft}";
         ToiletPanelWriter.WriteBlock(_layout, _layout.StatsTop, _layout.StatsRows, stats, ToiletBlockKind.Stats);
     }
 

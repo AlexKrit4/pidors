@@ -228,7 +228,8 @@ public sealed class CollectionEngine
                 }
 
                 var color = ParrotColors.All[random.Next(ParrotColors.All.Count)];
-                board.Set(row, col, Cell.Crystal(color, 1, symbols.GetCrystalDisplay(color, 1)));
+                var level = CrystalLevelPicker.NextLevel(random);
+                board.Set(row, col, Cell.Crystal(color, level, symbols.GetCrystalDisplay(color, level)));
             }
         }
     }

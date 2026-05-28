@@ -31,6 +31,9 @@ public sealed class ConsoleRenderer : IGameObserver
             case GameEventType.CommandFailed:
                 _output.WriteLine($">> ERROR: {gameEvent.Message}");
                 break;
+            case GameEventType.GameOver:
+                _output.WriteLine($">> {gameEvent.Message}");
+                break;
         }
     }
 }

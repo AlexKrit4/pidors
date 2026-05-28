@@ -24,7 +24,7 @@ public sealed class BoardGenerator : IBoardGenerator
             for (var col = 0; col < settings.ColCount; col++)
             {
                 var color = ParrotColors.All[random.Next(ParrotColors.All.Count)];
-                cells[row, col] = CreateCrystal(color, 1);
+                cells[row, col] = CreateCrystal(color, CrystalLevelPicker.NextLevel(random));
             }
         }
 
