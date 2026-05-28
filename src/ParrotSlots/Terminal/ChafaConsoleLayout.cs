@@ -31,51 +31,33 @@ public sealed class ChafaConsoleLayout
         width = Math.Max(MinWidth, width);
         height = Math.Max(MinHeight, height);
 
-        const int headerRows = 1;
-        var preferredBottomRows = height >= 34 ? 5 : height >= 28 ? 4 : 3;
-        var bottomRows = ChooseBottomRows(width, height, headerRows, preferredBottomRows);
+        var statsRows = 9; // Reserve more for toilet
+        var statsTop = Math.Max(0, height - statsRows);
 
-        var bottomTop = height - bottomRows;
-        var boardTop = headerRows;
-        var boardHeight = Math.Max(8, bottomTop - boardTop);
+        var availableBoardHeight = Math.Max(1, statsTop - 1); // Extra 1 line gap
+        var (boardWidth, measuredBoardHeight) = MeasureBoardSize(width, availableBoardHeight);
+        var boardHeight = measuredBoardHeight;
 
-        if (boardTop + boardHeight + bottomRows > height)
-        {
-            boardHeight = Math.Max(8, height - headerRows - bottomRows);
-            bottomTop = boardTop + boardHeight;
-            bottomRows = height - bottomTop;
-        }
-
-        var statusRows = 1;
-        var statsRows = 1;
-        var helpRows = bottomRows >= 5 && width < 90 ? 1 : 0;
-        var logRows = Math.Max(1, bottomRows - statusRows - statsRows - helpRows);
-
-        var logTop = bottomTop;
-        var statsTop = logTop + logRows;
-        var statusTop = statsTop + statsRows;
-        var helpTop = helpRows > 0 ? statusTop + statusRows : -1;
-
-        var (boardWidth, measuredBoardHeight) = MeasureBoardSize(width, boardHeight);
-        boardHeight = measuredBoardHeight;
+        var maxBoardTop = Math.Max(0, statsTop - 1 - boardHeight);
+        var boardTop = Math.Max(0, maxBoardTop / 2);
 
         return new ChafaConsoleLayout
         {
             Width = width,
             Height = height,
-            HeaderRows = headerRows,
+            HeaderRows = 0,
             BoardTop = boardTop,
             BoardLeft = Math.Max(0, (width - boardWidth) / 2),
             BoardWidth = boardWidth,
             BoardHeight = boardHeight,
-            LogTop = logTop,
-            LogRows = logRows,
+            LogTop = 0,
+            LogRows = 0,
             StatsTop = statsTop,
             StatsRows = statsRows,
-            StatusTop = statusTop,
-            StatusRows = statusRows,
-            HelpTop = helpTop,
-            HelpRows = helpRows
+            StatusTop = 0,
+            StatusRows = 0,
+            HelpTop = -1,
+            HelpRows = 0
         };
     }
 
@@ -126,15 +108,11 @@ public sealed class ChafaConsoleLayout
     public bool Matches(ChafaConsoleLayout other) =>
         Width == other.Width &&
         Height == other.Height &&
-        HeaderRows == other.HeaderRows &&
         BoardTop == other.BoardTop &&
         BoardLeft == other.BoardLeft &&
         BoardWidth == other.BoardWidth &&
         BoardHeight == other.BoardHeight &&
-        LogRows == other.LogRows &&
-        StatsRows == other.StatsRows &&
-        StatusRows == other.StatusRows &&
-        HelpRows == other.HelpRows;
+        StatsRows == other.StatsRows;
 }
 
 internal static class ConsoleTextLayout

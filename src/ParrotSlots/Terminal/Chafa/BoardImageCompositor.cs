@@ -21,18 +21,18 @@ public sealed class BoardImageCompositor
 
     public BoardImageCompositor(ImageCatalog catalog) => _catalog = catalog;
 
-    public byte[] Render(BoardAnimationFrame frame)
+    public byte[] Render(BoardAnimationFrame frame, ChafaConsoleLayout layout)
     {
         if (frame.Board is null)
         {
-            return RenderMessage("Press Spin to play.");
+            return RenderMessage("Press Spin to play.", layout);
         }
 
         var width = GameConstants.GridCols * CellPixelSize;
         var height = GameConstants.GridRows * CellPixelSize;
 
         using var canvas = new Image<Rgba32>(width, height);
-        DrawBoardBackdrop(canvas);
+        DrawBoardBackdrop(canvas, layout);
         DrawGrid(canvas);
 
         var board = frame.Board;
@@ -101,9 +101,45 @@ public sealed class BoardImageCompositor
         canvas.Mutate(ctx => ctx.DrawImage(background, new Point(0, 0), 1f));
     }
 
-    private static void DrawBoardBackdrop(Image<Rgba32> canvas)
+    private void DrawBoardBackdrop(Image<Rgba32> canvas, ChafaConsoleLayout layout)
     {
-        canvas.Mutate(ctx => ctx.BackgroundColor(BoardBackdrop));
+        var fullBgWidth = Math.Max(1, layout.Width) * TerminalCellPixelWidth;
+        var fullBgHeight = Math.Max(1, layout.Height) * TerminalCellPixelHeight;
+
+        var background = LoadBackground(fullBgWidth, fullBgHeight);
+        if (background is not null)
+        {
+            var boardX = layout.BoardLeft * TerminalCellPixelWidth;
+            var boardY = layout.BoardTop * TerminalCellPixelHeight;
+            var boardWidthPx = layout.BoardWidth * TerminalCellPixelWidth;
+            var boardHeightPx = layout.BoardHeight * TerminalCellPixelHeight;
+
+            var cropRect = new Rectangle(boardX, boardY, boardWidthPx, boardHeightPx);
+            cropRect.Intersect(background.Bounds);
+
+            if (cropRect.Width > 0 && cropRect.Height > 0)
+            {
+                using var croppedBg = background.Clone(ctx => ctx.Crop(cropRect));
+
+                SoftenBackground(croppedBg);
+
+                croppedBg.Mutate(ctx => ctx.Resize(new ResizeOptions
+                {
+                    Size = new Size(canvas.Width, canvas.Height),
+                    Mode = ResizeMode.Stretch
+                }));
+
+                canvas.Mutate(ctx => ctx.DrawImage(croppedBg, new Point(0, 0), 1f));
+            }
+            else
+            {
+                canvas.Mutate(ctx => ctx.BackgroundColor(FallbackBackground));
+            }
+        }
+        else
+        {
+            canvas.Mutate(ctx => ctx.BackgroundColor(FallbackBackground));
+        }
     }
 
     private static void SoftenBackground(Image<Rgba32> canvas)
@@ -248,10 +284,28 @@ public sealed class BoardImageCompositor
         return image;
     }
 
-    private byte[] RenderMessage(string message)
+    private byte[] RenderMessage(string message, ChafaConsoleLayout layout)
     {
         using var image = new Image<Rgba32>(320, 80);
-        DrawBackground(image);
+
+        var fullBgWidth = Math.Max(1, layout.Width) * TerminalCellPixelWidth;
+        var fullBgHeight = Math.Max(1, layout.Height) * TerminalCellPixelHeight;
+        var background = LoadBackground(fullBgWidth, fullBgHeight);
+
+        if (background is not null)
+        {
+            var boardX = layout.BoardLeft * TerminalCellPixelWidth;
+            var boardWidth = layout.BoardWidth * TerminalCellPixelWidth;
+            using var croppedBg = background.Clone(ctx => ctx.Crop(new Rectangle(boardX, layout.BoardTop * TerminalCellPixelHeight, boardWidth, image.Height)));
+            SoftenBackground(croppedBg);
+            croppedBg.Mutate(ctx => ctx.Resize(new ResizeOptions { Size = image.Size, Mode = ResizeMode.Stretch }));
+            image.Mutate(ctx => ctx.DrawImage(croppedBg, new Point(0, 0), 1f));
+        }
+        else
+        {
+            image.Mutate(ctx => ctx.BackgroundColor(FallbackBackground));
+        }
+
         using var stream = new MemoryStream();
         image.SaveAsPng(stream);
         return stream.ToArray();

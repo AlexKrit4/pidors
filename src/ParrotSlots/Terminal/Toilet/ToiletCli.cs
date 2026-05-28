@@ -46,7 +46,7 @@ public sealed class ToiletCli
         width = Math.Max(20, width);
         maxRows = Math.Max(1, maxRows);
 
-        var font = PickFont(width, kind);
+        var font = PickFont(width, maxRows, kind);
         var filter = PickFilter(kind);
         var arguments = new StringBuilder();
         arguments.Append("-f ").Append(font).Append(' ');
@@ -85,26 +85,26 @@ public sealed class ToiletCli
         return NormalizeLines(output, width, maxRows);
     }
 
-    private static string PickFont(int width, ToiletBlockKind kind) =>
+    private static string PickFont(int width, int maxRows, ToiletBlockKind kind) =>
         kind switch
         {
-            ToiletBlockKind.Stats when width >= 110 => "big",
-            ToiletBlockKind.Stats when width >= 80 => "standard",
-            ToiletBlockKind.Stats when width >= 60 => "term",
-            ToiletBlockKind.Stats => "mono12",
-            ToiletBlockKind.Status when width >= 100 => "standard",
-            ToiletBlockKind.Status when width >= 70 => "term",
-            ToiletBlockKind.Status => "mono12",
-            ToiletBlockKind.Log when width >= 90 => "term",
-            ToiletBlockKind.Log => "mono12",
-            ToiletBlockKind.Help => "mono12",
+            ToiletBlockKind.Stats when width >= 110 && maxRows >= 8 => "big",
+            ToiletBlockKind.Stats when width >= 80 && maxRows >= 6 => "standard",
+            ToiletBlockKind.Stats when width >= 60 && maxRows >= 2 => "term",
+            ToiletBlockKind.Stats => "term",
+            ToiletBlockKind.Status when width >= 100 && maxRows >= 6 => "standard",
+            ToiletBlockKind.Status when width >= 70 && maxRows >= 2 => "term",
+            ToiletBlockKind.Status => "term",
+            ToiletBlockKind.Log when width >= 90 && maxRows >= 2 => "term",
+            ToiletBlockKind.Log => "term",
+            ToiletBlockKind.Help => "term",
             _ => "term"
         };
 
     private static string PickFilter(ToiletBlockKind kind) =>
         kind switch
         {
-            ToiletBlockKind.Stats => "metal",
+            ToiletBlockKind.Stats => "gay",
             ToiletBlockKind.Status => "border",
             _ => string.Empty
         };
@@ -113,11 +113,9 @@ public sealed class ToiletCli
     {
         var lines = output
             .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .TrimEnd('\n')
             .Split('\n')
-            .Select(line => StripTrailingWhitespace(line))
-            .Where(line => line.Length > 0)
             .Take(maxRows)
-            .Select(line => TruncateVisible(line, width))
             .ToList();
 
         if (lines.Count == 0)
@@ -126,18 +124,6 @@ public sealed class ToiletCli
         }
 
         return lines;
-    }
-
-    private static string StripTrailingWhitespace(string line) => line.TrimEnd();
-
-    private static string TruncateVisible(string line, int width)
-    {
-        if (line.Length <= width)
-        {
-            return line;
-        }
-
-        return width <= 3 ? line[..width] : line[..(width - 3)] + "...";
     }
 
     private static string? FindExecutable()

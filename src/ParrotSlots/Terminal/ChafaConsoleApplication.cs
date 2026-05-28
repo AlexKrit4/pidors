@@ -5,6 +5,7 @@ using ParrotSlots.Core;
 using ParrotSlots.Graphics;
 using ParrotSlots.Settings;
 using ParrotSlots.Terminal.Chafa;
+using ParrotSlots.Terminal.Toilet;
 namespace ParrotSlots.Terminal;
 
 /// <summary>
@@ -227,10 +228,8 @@ public sealed class ChafaConsoleApplication
     {
         RefreshLayoutIfNeeded();
         Console.Write("\x1b[?25l\x1b[2J\x1b[H\x1b[0m");
-        WriteHeader(state);
         WriteBoardBackground();
         WriteBoard(frame);
-        ClearPanelGap();
         WriteBottomPanel(state);
         Console.Out.Flush();
     }
@@ -247,15 +246,15 @@ public sealed class ChafaConsoleApplication
         {
             if (string.IsNullOrEmpty(_renderedBoardBackground) ||
                 _backgroundColumns != _layout.Width ||
-                _backgroundRows != _layout.BoardHeight)
+                _backgroundRows != _layout.Height)
             {
-                var png = _compositor.RenderBackground(_layout.Width, _layout.BoardHeight);
-                _renderedBoardBackground = ChafaCli.RenderPng(png, _layout.Width, _layout.BoardHeight, "block+space");
+                var png = _compositor.RenderBackground(_layout.Width, _layout.Height);
+                _renderedBoardBackground = ChafaCli.RenderPng(png, _layout.Width, _layout.Height, "block+space");
                 _backgroundColumns = _layout.Width;
-                _backgroundRows = _layout.BoardHeight;
+                _backgroundRows = _layout.Height;
             }
 
-            WriteAnsiBlock(0, _layout.BoardTop, _layout.BoardHeight, _renderedBoardBackground);
+            WriteAnsiBlock(0, 0, _layout.Height, _renderedBoardBackground);
         }
         catch (Exception ex)
         {
@@ -271,7 +270,7 @@ public sealed class ChafaConsoleApplication
     {
         try
         {
-            var png = _compositor.Render(frame);
+            var png = _compositor.Render(frame, _layout);
             var output = ChafaCli.RenderPng(png, _layout.BoardWidth, _layout.BoardHeight);
             WriteAnsiBlock(_layout.BoardLeft, _layout.BoardTop, _layout.BoardHeight, output);
         }
@@ -340,30 +339,8 @@ public sealed class ChafaConsoleApplication
 
     private void WriteBottomPanel(TerminalUiState state)
     {
-        var logLines = state.Messages
-            .TakeLast(_layout.LogRows)
-            .ToList();
-
-        while (logLines.Count < _layout.LogRows)
-        {
-            logLines.Insert(0, string.Empty);
-        }
-
-        for (var i = 0; i < _layout.LogRows; i++)
-        {
-            WritePanelLine(_layout.LogTop + i, logLines[i], dim: string.IsNullOrWhiteSpace(logLines[i]));
-        }
-
-        var stats = $"Balance {state.Balance}   Bet {state.Bet}   Win {state.LastWin}";
-        WritePanelLine(_layout.StatsTop, stats, dim: false, highlight: true);
-
-        WritePanelLine(_layout.StatusTop, state.Status, dim: false);
-
-        if (_layout.HelpTop >= 0)
-        {
-            var help = ConsoleTextLayout.Wrap("S Spin  -/+ Bet  B Balance  R Rules  Q Quit", _layout.Width, 1)[0];
-            WritePanelLine(_layout.HelpTop, help, dim: true);
-        }
+        var stats = $"Bal {state.Balance} Bet {state.Bet} Win {state.LastWin}";
+        ToiletPanelWriter.WriteBlock(_layout, _layout.StatsTop, _layout.StatsRows, stats, ToiletBlockKind.Stats);
     }
 
     private void WritePlainLine(int row, string text, bool bright)

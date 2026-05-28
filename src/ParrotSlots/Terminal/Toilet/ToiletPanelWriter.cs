@@ -11,8 +11,6 @@ internal static class ToiletPanelWriter
             return;
         }
 
-        ClearBlock(layout.Width, topRow, rowCount);
-
         IReadOnlyList<string> lines;
         try
         {
@@ -35,26 +33,10 @@ internal static class ToiletPanelWriter
 
             var line = i < lines.Count ? lines[i] : string.Empty;
             Console.SetCursorPosition(0, row);
-            Console.Write("\x1b[48;5;236m");
+            Console.Write("\x1b[49m"); // default transparent background
             Console.Write(line);
-            if (line.Length < layout.Width)
-            {
-                Console.Write(new string(' ', layout.Width - line.Length));
-            }
-
             Console.Write("\x1b[0m");
         }
     }
 
-    private static void ClearBlock(int width, int topRow, int rowCount)
-    {
-        for (var i = 0; i < rowCount; i++)
-        {
-            Console.SetCursorPosition(0, topRow + i);
-            Console.Write("\x1b[2K");
-            Console.Write("\x1b[48;5;236m");
-            Console.Write(new string(' ', width));
-            Console.Write("\x1b[0m");
-        }
-    }
 }

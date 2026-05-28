@@ -77,7 +77,8 @@ public sealed class ChafaBoardView : View, IBoardView
 
             if (string.IsNullOrEmpty(_renderedText))
             {
-                var png = _compositor.Render(_frame);
+                var layout = ChafaConsoleLayout.Measure(bounds.Width, bounds.Height);
+                var png = _compositor.Render(_frame, layout);
                 _renderedText = ChafaCli.RenderPng(png, renderColumns, renderRows);
             }
 
